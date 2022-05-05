@@ -18,22 +18,22 @@ def get_data():
     return pd.read_csv('Cambridge_Property_Database_FY2022_8000_sample.csv')
 
 #finds all properties in the cambridge area with the given parameters
-def query1(data, select_class = 'CNDO LUX', assessed_price = 5000000):
+def map_data(data, select_class = 'CNDO LUX', assessed_price = 5000000):
     df = data[(data['AssessedValue'] < assessed_price) & (data['PropertyClass'] == select_class)]
     COLUMNS = ('address', 'latitude', 'longitude')
     locations = df[['Address', 'Latitude', 'Longitude']]
     locations.columns = COLUMNS
     return locations
 
-def query2(data):
-    clean_data = data[(data['PropertyTaxAmount'] > 100) & (data['AssessedValue'] < 750000)]
+def property_tax(data, select_property_price = 500000, select_tax = 100): #graphs property tax data
+    clean_data = data[(data['PropertyTaxAmount'] > select_tax) & (data['AssessedValue'] < select_property_price)]
     df = pd.pivot_table(data=clean_data, index=['AssessedValue'], values=['PropertyTaxAmount'])
     house_value = clean_data['AssessedValue']
     property_tax = clean_data['PropertyTaxAmount']
     fig = px.scatter(x = house_value, y = property_tax, labels={'x':'Property Value', 'y':'Property tax'},title="Property taxes based off property value")
     return fig, df
 
-def query4(data):
+def land_data(data): #gets data for land and charts it
     fig,ax = plt.subplots()
     clean_data = data[(data["LandArea"] > 0) & (data['LandArea'] < 5000)]
     #calculate land values
@@ -50,10 +50,9 @@ def query4(data):
     ax.set_xlabel("Land amounts")
     return plt
 
-
-
-def query5(data):
+def residential_exemptions(data): #pie chart of residential_exemptions
     fig,ax = plt.subplots()
+    #gets total of number of data entries
     total = len(data)
     df = data[data['ResidentialExemption'] == True]
     exempt = len(df)
@@ -63,14 +62,14 @@ def query5(data):
     ax.pie(list, labels=label, autopct='%1.2f%%')
     return plt
 
-def mapping(locations):
+def mapping(locations): #maps the data unless
+    #makes sure there is no error if faults in data
     try:
         st.map(locations)
     except:
-        st.write("Map cannot be displayed Null values detected")
         pass
 
-def map_inputs(property_classes):
+def map_inputs(property_classes): #gets map inputs for map
     st.sidebar.header("Enter values then click button")
     select_class = st.selectbox('What type of property are you looking for?', property_classes)
     assessed_price = st.number_input('Property Price Limit')
@@ -78,45 +77,60 @@ def map_inputs(property_classes):
 
     return select_class, assessed_price, button
 
-def main():
+def tax_inputs(): #gets property tax inputs for graph
+    #sidebar button
+    st.sidebar.header("Enter values then click button")
+    select_property_price = st.number_input('House prices less than:')
+    select_tax = st.number_input('Property taxes greater than:')
 
+    tax_button = st.sidebar.button('Update Graph')
+
+    return select_property_price, select_tax, tax_button
+
+def main():
+    #sets up the page and gets key information
+    num_pages = [str(i) for i in range(1,6)]  #creates the number of pages for the website using list comprehension
+    pages = tuple(num_pages) #puts it into a tuple to protect it from changing
     st.set_page_config(page_title= "Cambridge Properties", page_icon= "Web_icon.jpg")
-    page = st.sidebar.selectbox("Page: ", ('1','2','3', '4', '5'))
+    page = st.sidebar.selectbox("Page: ", pages)
     data = get_data() # call the get_data() function and place it into the data variable
     property_classes = data.PropertyClass.unique() # find all property classes that are unique
 
     #checks to see what page you are on and displays the relevant information
-    if page == '1':
-        st.font = 'lobster'
+    if page == '1': #1rst page
         st.header("Welcome to Adam Francis' Website")
         st.subheader('This project is about properties in Cambridge, MA')
         st.image('cambridge_photo.jpg')
-    elif page == '2':
+    elif page == '2': #2nd page
         st.header("Finding specific properties by price")
         select_class, assessed_price, button = map_inputs(property_classes)
-        locations = query1(data, select_class, assessed_price)
+        locations = map_data(data, select_class, assessed_price)
         if button:
             mapping(locations)
             st.dataframe(locations)
-    elif page == '3':
-        st.header('Scatterplot of property taxes based off assessed value')
-        st.write('Of houses under 750k Assessed Value')
-        c1, c2 = st.columns(2)
-        fig, df = query2(data)
-        st.plotly_chart(fig)
-        df = df.sort_values(['PropertyTaxAmount'], ascending=True)
-        st.write('Data Frame of the property tax amounts in ascending order')
-        st.dataframe(df)
-        #fig.show()
+    elif page == '3': #3rd page
+        select_property_price, select_tax, tax_button = tax_inputs()
 
-    elif page == '4':
+        st.header('Scatterplot of property taxes based off assessed value')
+        st.write('Of houses under specified Assessed Value and property taxes over specified amount')
+        if tax_button:
+            try:
+                fig, df = property_tax(data, select_property_price, select_tax)
+                st.plotly_chart(fig)
+                st.write('Error invalid inputs')
+                df = df.sort_values(['PropertyTaxAmount'], ascending=True)
+                st.write('Data Frame of the property tax amounts in ascending order')
+                st.dataframe(df)
+            except:
+                st.write('Invalid Inputs')
+
+    elif page == '4': #4th page
         st.header('Land prices')
         st.write('For land sized under 5000 sqf and above 0 sqf')
-        st.pyplot(query4(data))
+        st.pyplot(land_data(data))
 
-    elif page == '5':
+    elif page == '5': #5th page
         st.header('Percent of Properties that are residential exemptions')
-        st.pyplot(query5(data))
-
+        st.pyplot(residential_exemptions(data))
 main()
 
