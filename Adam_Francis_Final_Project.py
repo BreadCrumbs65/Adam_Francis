@@ -10,9 +10,6 @@ is another popular plotting module for python.
 """
 import pandas as pd
 import streamlit as st
-import numpy as np
-import matplotlib.pyplot as plt
-import pandas
 import plotly.express as px
 from matplotlib import pyplot as plt
 
