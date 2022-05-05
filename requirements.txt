@@ -1,4 +1,4 @@
-import pandas as pd
-import streamlit as st
-import plotly.express as px
-from matplotlib import pyplot as plt
+streamlit==1.8.1
+pandas==1.4.2
+matplotlib==3.5.1
+plotly==5.7.0
